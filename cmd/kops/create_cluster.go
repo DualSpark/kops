@@ -58,7 +58,10 @@ type CreateClusterOptions struct {
 	AssociatePublicIP bool
 
 	// Channel is the location of the api.Channel to use for our defaults
-	Channel string
+	Channel           string
+
+	// The network topology to use
+	Topology          string
 }
 
 func NewCmdCreateCluster(f *util.Factory, out io.Writer) *cobra.Command {
@@ -110,6 +113,9 @@ func NewCmdCreateCluster(f *util.Factory, out io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&options.AssociatePublicIP, "associate-public-ip", true, "Specify --associate-public-ip=[true|false] to enable/disable association of public IP for master ASG and nodes. Default is 'true'.")
 
 	cmd.Flags().StringVar(&options.Channel, "channel", api.DefaultChannel, "Channel for default versions and configuration to use")
+
+	// Network topology
+	cmd.Flags().StringVarP(&options.Topology, "topology", "t", "public", "Controls network topology for the cluster. public|private|privatemasters. Default is 'public'.")
 
 	return cmd
 }
@@ -357,6 +363,22 @@ func RunCreateCluster(f *util.Factory, cmd *cobra.Command, args []string, out io
 		if cluster.Spec.CloudProvider == "" {
 			return fmt.Errorf("unable to infer CloudProvider from Zones (is there a typo in --zones?)")
 		}
+	}
+
+
+	// Network Topology
+	switch  c.Topology{
+	case api.TopologyPublic:
+		cluster.Spec.Topology = &api.TopologySpec{Masters: api.TopologyPublic, Nodes: api.TopologyPublic, BypassBastion: false}
+	case api.TopologyPrivate:
+		cluster.Spec.Topology = &api.TopologySpec{Masters: api.TopologyPrivate, Nodes: api.TopologyPrivate, BypassBastion: false}
+	case api.TopologyPrivateMasters:
+		cluster.Spec.Topology = &api.TopologySpec{Masters: api.TopologyPrivate, Nodes: api.TopologyPublic, BypassBastion: false}
+	case "":
+		glog.Warningf("Empty topology. Defaulting to public topology.")
+		cluster.Spec.Topology = &api.TopologySpec{Masters: api.TopologyPublic, Nodes: api.TopologyPublic, BypassBastion: false}
+	default:
+		return fmt.Errorf("Invalid topology %s.", c.Topology)
 	}
 
 	sshPublicKeys := make(map[string][]byte)
