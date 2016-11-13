@@ -76,6 +76,7 @@ codegen: kops-gobindata
 	PATH=${GOPATH_1ST}/bin:${PATH} go generate k8s.io/kops/upup/pkg/fi/fitasks
 
 test:
+	go test k8s.io/kops/cmd/... -args -v=1 -logtostderr
 	go test k8s.io/kops/upup/pkg/... -args -v=1 -logtostderr
 
 crossbuild:

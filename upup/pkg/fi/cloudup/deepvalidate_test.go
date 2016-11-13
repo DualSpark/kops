@@ -37,6 +37,7 @@ func TestDeepValidate_OK(t *testing.T) {
 
 func TestDeepValidate_NoNodeZones(t *testing.T) {
 	c := buildDefaultCluster(t)
+
 	var groups []*api.InstanceGroup
 	groups = append(groups, buildMinimalMasterInstanceGroup("us-mock-1a"))
 	expectErrorFromDeepValidate(t, c, groups, "must configure at least one Node InstanceGroup")

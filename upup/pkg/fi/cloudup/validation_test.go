@@ -63,10 +63,9 @@ func buildDefaultCluster(t *testing.T) *api.Cluster {
 	if err != nil {
 		t.Fatalf("error from PopulateClusterSpec: %v", err)
 	}
-
 	//// TODO: We should actually just specify the minimums here, and run in though the default logic
 	//c.Cluster = &api.Cluster{}
-	//c.Cluster.Name = "testcluster.mydomain.com"
+	c.Name = "testcluster.mydomain.com"
 
 	//c.InstanceGroups = append(c.InstanceGroups, buildNodeInstanceGroup("us-mock-1a"))
 	//c.InstanceGroups = append(c.InstanceGroups, buildMasterInstanceGroup("us-mock-1a"))

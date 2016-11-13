@@ -17,11 +17,11 @@ limitations under the License.
 package models
 
 import (
-	"path"
 	"errors"
-	"os"
-	"strings"
 	"k8s.io/kops/util/pkg/vfs"
+	"os"
+	"path"
+	"strings"
 )
 
 var ReadOnlyError = errors.New("AssetPath is read-only")
@@ -107,7 +107,7 @@ func readTree(base string, dest *[]vfs.Path) error {
 		// This is because go-bindata doesn't support FileInfo on directories :-(
 		{
 			err = readTree(p, dest)
-			if err != nil && !os.IsNotExist(err){
+			if err != nil && !os.IsNotExist(err) {
 				return err
 			}
 		}
