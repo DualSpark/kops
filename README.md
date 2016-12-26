@@ -17,9 +17,7 @@ Kubernetes on Amazon Web Services (AWS) and support for more platforms is planne
 Check out our [tutorial](/docs/aws.md) for launching a Kubernetes cluster hosted
 on AWS.
 
-<p align="center">
-  <img src="/docs/img/demo.gif" width="885" > </image>
-</p>
+[![asciicast](https://asciinema.org/a/dwoqi5exm9lagz7lp06liex46.png)](https://asciinema.org/a/dwoqi5exm9lagz7lp06liex46)
 
 ## Features
 
