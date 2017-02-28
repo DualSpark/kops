@@ -95,7 +95,8 @@ This command updates a kubernetes cluseter to match the cloud, and kops specific
 To perform rolling update, you need to update the cloud resources first with "kops update cluster"
 
 Use KOPS_FEATURE_FLAGS="+DrainAndValidateRollingUpdate" to use beta code that drains the nodes
-and validates the cluser.  Enabling the feature flag, enables the flags for drain and validateion.`,
+and validates the cluser.  New flags for Drain and Validation operations will be shown when
+the environment variable is set.`,
 	}
 
 	cmd.Flags().BoolVar(&options.Yes, "yes", options.Yes, "perform rolling update without confirmation")
@@ -300,6 +301,7 @@ func RunRollingUpdateCluster(f *util.Factory, out io.Writer, options *RollingUpd
 		Force:            options.Force,
 		Cloud:            cloud,
 		K8sClient:        k8sClient,
+		ClientConfig:     kutil.NewClientConfig(config, "kube-system"),
 		FailOnDrainError: options.FailOnDrainError,
 		FailOnValidate:   options.FailOnValidate,
 		CloudOnly:        options.CloudOnly,
