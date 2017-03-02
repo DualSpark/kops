@@ -280,3 +280,6 @@
 [submodule "_vendor/k8s.io/apiserver"]
 	path = _vendor/k8s.io/apiserver
 	url = https://github.com/kubernetes/apiserver
+[submodule "_vendor/vbom.ml/util"]
+	path = _vendor/vbom.ml/util
+	url = https://github.com/fvbommel/util
