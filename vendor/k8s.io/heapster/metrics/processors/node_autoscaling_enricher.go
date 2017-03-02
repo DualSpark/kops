@@ -16,19 +16,19 @@ package processors
 
 import (
 	"net/url"
-	"time"
 
+	"k8s.io/apimachinery/pkg/labels"
+	kube_client "k8s.io/client-go/kubernetes"
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/tools/cache"
 	kube_config "k8s.io/heapster/common/kubernetes"
 	"k8s.io/heapster/metrics/core"
 	"k8s.io/heapster/metrics/util"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	"k8s.io/kubernetes/pkg/fields"
 )
 
 type NodeAutoscalingEnricher struct {
-	nodeLister *cache.StoreToNodeLister
+	nodeLister v1listers.NodeLister
 	reflector  *cache.Reflector
 }
 
@@ -37,32 +37,36 @@ func (this *NodeAutoscalingEnricher) Name() string {
 }
 
 func (this *NodeAutoscalingEnricher) Process(batch *core.DataBatch) (*core.DataBatch, error) {
-	nodes, err := this.nodeLister.List()
+	nodes, err := this.nodeLister.List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
-	for _, node := range nodes.Items {
+	for _, node := range nodes {
 		if metricSet, found := batch.MetricSets[core.NodeKey(node.Name)]; found {
-			metricSet.Labels[core.LabelLabels.Key] = util.LabelsToString(node.Labels, ",")
-			availableCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
-			availableMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
+			metricSet.Labels[core.LabelLabels.Key] = util.LabelsToString(node.Labels)
+			capacityCpu, _ := node.Status.Capacity[kube_api.ResourceCPU]
+			capacityMem, _ := node.Status.Capacity[kube_api.ResourceMemory]
+			allocatableCpu, _ := node.Status.Allocatable[kube_api.ResourceCPU]
+			allocatableMem, _ := node.Status.Allocatable[kube_api.ResourceMemory]
 
 			cpuRequested := getInt(metricSet, &core.MetricCpuRequest)
 			cpuUsed := getInt(metricSet, &core.MetricCpuUsageRate)
 			memRequested := getInt(metricSet, &core.MetricMemoryRequest)
 			memUsed := getInt(metricSet, &core.MetricMemoryUsage)
 
-			if availableCpu.MilliValue() != 0 {
-				setFloat(metricSet, &core.MetricNodeCpuUtilization, float32(cpuUsed)/float32(availableCpu.MilliValue()))
-				setFloat(metricSet, &core.MetricNodeCpuReservation, float32(cpuRequested)/float32(availableCpu.MilliValue()))
-				setFloat(metricSet, &core.MetricNodeCpuCapacity, float32(availableCpu.MilliValue()))
+			if allocatableCpu.MilliValue() != 0 {
+				setFloat(metricSet, &core.MetricNodeCpuUtilization, float32(cpuUsed)/float32(allocatableCpu.MilliValue()))
+				setFloat(metricSet, &core.MetricNodeCpuReservation, float32(cpuRequested)/float32(allocatableCpu.MilliValue()))
 			}
+			setFloat(metricSet, &core.MetricNodeCpuCapacity, float32(capacityCpu.MilliValue()))
+			setFloat(metricSet, &core.MetricNodeCpuAllocatable, float32(allocatableCpu.MilliValue()))
 
-			if availableMem.Value() != 0 {
-				setFloat(metricSet, &core.MetricNodeMemoryUtilization, float32(memUsed)/float32(availableMem.Value()))
-				setFloat(metricSet, &core.MetricNodeMemoryReservation, float32(memRequested)/float32(availableMem.Value()))
-				setFloat(metricSet, &core.MetricNodeMemoryCapacity, float32(availableMem.Value()))
+			if allocatableMem.Value() != 0 {
+				setFloat(metricSet, &core.MetricNodeMemoryUtilization, float32(memUsed)/float32(allocatableMem.Value()))
+				setFloat(metricSet, &core.MetricNodeMemoryReservation, float32(memRequested)/float32(allocatableMem.Value()))
 			}
+			setFloat(metricSet, &core.MetricNodeMemoryCapacity, float32(capacityMem.Value()))
+			setFloat(metricSet, &core.MetricNodeMemoryAllocatable, float32(allocatableMem.Value()))
 		}
 	}
 	return batch, nil
@@ -88,13 +92,10 @@ func NewNodeAutoscalingEnricher(url *url.URL) (*NodeAutoscalingEnricher, error) 
 	if err != nil {
 		return nil, err
 	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
+	kubeClient := kube_client.NewForConfigOrDie(kubeConfig)
 
 	// watch nodes
-	lw := cache.NewListWatchFromClient(kubeClient, "nodes", kube_api.NamespaceAll, fields.Everything())
-	nodeLister := &cache.StoreToNodeLister{Store: cache.NewStore(cache.MetaNamespaceKeyFunc)}
-	reflector := cache.NewReflector(lw, &kube_api.Node{}, nodeLister.Store, time.Hour)
-	reflector.Run()
+	nodeLister, reflector, _ := util.GetNodeLister(kubeClient)
 
 	return &NodeAutoscalingEnricher{
 		nodeLister: nodeLister,

@@ -20,12 +20,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/olivere/elastic"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/olivere/elastic.v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	"k8s.io/heapster/events/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	kube_api_unversioned "k8s.io/kubernetes/pkg/api/unversioned"
 )
 
 type dataSavedToES struct {
@@ -39,12 +39,14 @@ type fakeESSink struct {
 
 var FakeESSink fakeESSink
 
-func SaveDataIntoESStub(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error {
-	jsonItems, err := json.Marshal(sinkData)
-	if err != nil {
-		return fmt.Errorf("failed to transform the items to json : %s", err)
+func SaveDataIntoES_Stub(date time.Time, sinkData []interface{}) error {
+	for _, data := range sinkData {
+		jsonItems, err := json.Marshal(data)
+		if err != nil {
+			return fmt.Errorf("failed to transform the items to json : %s", err)
+		}
+		FakeESSink.savedData = append(FakeESSink.savedData, dataSavedToES{string(jsonItems)})
 	}
-	FakeESSink.savedData = append(FakeESSink.savedData, dataSavedToES{string(jsonItems)})
 	return nil
 }
 
@@ -53,10 +55,11 @@ func NewFakeSink() fakeESSink {
 	savedData := make([]dataSavedToES, 0)
 	return fakeESSink{
 		&elasticSearchSink{
-			saveDataFunc: SaveDataIntoESStub,
-			esConfig: esCommon.ElasticSearchConfig{
-				Index:    "heapster-metric-index",
-				EsClient: &elastic.Client{},
+			saveData:  SaveDataIntoES_Stub,
+			flushData: func() error { return nil },
+			esSvc: esCommon.ElasticSearchService{
+				EsClient:    &elastic.Client{},
+				ClusterName: esCommon.ESClusterName,
 			},
 		},
 		savedData,
@@ -77,14 +80,14 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	event1 := kube_api.Event{
 		Message:        "event1",
 		Count:          100,
-		LastTimestamp:  kube_api_unversioned.NewTime(now),
-		FirstTimestamp: kube_api_unversioned.NewTime(now),
+		LastTimestamp:  metav1.NewTime(now),
+		FirstTimestamp: metav1.NewTime(now),
 	}
 	event2 := kube_api.Event{
 		Message:        "event2",
 		Count:          101,
-		LastTimestamp:  kube_api_unversioned.NewTime(now),
-		FirstTimestamp: kube_api_unversioned.NewTime(now),
+		LastTimestamp:  metav1.NewTime(now),
+		FirstTimestamp: metav1.NewTime(now),
 	}
 	data := core.EventBatch{
 		Timestamp: timestamp,
@@ -96,5 +99,19 @@ func TestStoreMultipleDataInput(t *testing.T) {
 	fakeSink.ExportEvents(&data)
 	// expect msg string
 	assert.Equal(t, 2, len(FakeESSink.savedData))
+
+	var expectMsgTemplate = [2]string{
+		`{"Count":100,"Metadata":{"creationTimestamp":null},"InvolvedObject":{},"Source":{},"FirstOccurrenceTimestamp":%s,"LastOccurrenceTimestamp":%s,"Message":"event1","Reason":"","Type":"","EventTags":{"cluster_name":"default","eventID":"","hostname":""}}`,
+		`{"Count":101,"Metadata":{"creationTimestamp":null},"InvolvedObject":{},"Source":{},"FirstOccurrenceTimestamp":%s,"LastOccurrenceTimestamp":%s,"Message":"event2","Reason":"","Type":"","EventTags":{"cluster_name":"default","eventID":"","hostname":""}}`,
+	}
+
+	msgsString := fmt.Sprintf("%s", FakeESSink.savedData)
+	ts, _ := json.Marshal(metav1.NewTime(now).Time.UTC())
+
+	for _, mgsTemplate := range expectMsgTemplate {
+		expectMsg := fmt.Sprintf(mgsTemplate, ts, ts)
+		assert.Contains(t, msgsString, expectMsg)
+	}
+
 	FakeESSink = fakeESSink{}
 }

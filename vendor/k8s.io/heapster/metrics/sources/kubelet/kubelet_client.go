@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // This file implements a cadvisor datasource, that collects metrics from an instance
-// of cadvisor runing on a specific host.
+// of cadvisor running on a specific host.
 
 package kubelet
 
@@ -27,8 +27,8 @@ import (
 	"time"
 
 	cadvisor "github.com/google/cadvisor/info/v1"
+	kubelet_client "k8s.io/heapster/metrics/sources/kubelet/util"
 	"k8s.io/kubernetes/pkg/kubelet/api/v1alpha1/stats"
-	kube_client "k8s.io/kubernetes/pkg/kubelet/client"
 )
 
 type Host struct {
@@ -38,7 +38,7 @@ type Host struct {
 }
 
 type KubeletClient struct {
-	config *kube_client.KubeletClientConfig
+	config *kubelet_client.KubeletClientConfig
 	client *http.Client
 }
 
@@ -104,11 +104,11 @@ type statsRequest struct {
 	NumStats int `json:"num_stats,omitempty"`
 
 	// Start time for which to query information.
-	// If ommitted, the beginning of time is assumed.
+	// If omitted, the beginning of time is assumed.
 	Start time.Time `json:"start,omitempty"`
 
 	// End time for which to query information.
-	// If ommitted, current time is assumed.
+	// If omitted, current time is assumed.
 	End time.Time `json:"end,omitempty"`
 
 	// Whether to also include information from subcontainers.
@@ -194,8 +194,8 @@ func (self *KubeletClient) getAllContainers(url string, start, end time.Time) ([
 	return result, nil
 }
 
-func NewKubeletClient(kubeletConfig *kube_client.KubeletClientConfig) (*KubeletClient, error) {
-	transport, err := kube_client.MakeTransport(kubeletConfig)
+func NewKubeletClient(kubeletConfig *kubelet_client.KubeletClientConfig) (*KubeletClient, error) {
+	transport, err := kubelet_client.MakeTransport(kubeletConfig)
 	if err != nil {
 		return nil, err
 	}

@@ -72,10 +72,80 @@ var LabeledMetrics = []Metric{
 var NodeAutoscalingMetrics = []Metric{
 	MetricNodeCpuCapacity,
 	MetricNodeMemoryCapacity,
+	MetricNodeCpuAllocatable,
+	MetricNodeMemoryAllocatable,
 	MetricNodeCpuUtilization,
 	MetricNodeMemoryUtilization,
 	MetricNodeCpuReservation,
 	MetricNodeMemoryReservation,
+}
+
+var CpuMetrics = []Metric{
+	MetricCpuLimit,
+	MetricCpuRequest,
+	MetricCpuUsage,
+	MetricCpuUsageRate,
+	MetricNodeCpuAllocatable,
+	MetricNodeCpuCapacity,
+	MetricNodeCpuReservation,
+	MetricNodeCpuUtilization,
+}
+var FilesystemMetrics = []Metric{
+	MetricFilesystemAvailable,
+	MetricFilesystemLimit,
+	MetricFilesystemUsage,
+}
+var MemoryMetrics = []Metric{
+	MetricMemoryLimit,
+	MetricMemoryMajorPageFaults,
+	MetricMemoryMajorPageFaultsRate,
+	MetricMemoryPageFaults,
+	MetricMemoryPageFaultsRate,
+	MetricMemoryRequest,
+	MetricMemoryUsage,
+	MetricMemoryWorkingSet,
+	MetricNodeMemoryAllocatable,
+	MetricNodeMemoryCapacity,
+	MetricNodeMemoryUtilization,
+	MetricNodeMemoryReservation,
+}
+var NetworkMetrics = []Metric{
+	MetricNetworkRx,
+	MetricNetworkRxErrors,
+	MetricNetworkRxErrorsRate,
+	MetricNetworkRxRate,
+	MetricNetworkTx,
+	MetricNetworkTxErrors,
+	MetricNetworkTxErrorsRate,
+	MetricNetworkTxRate,
+}
+
+type MetricFamily string
+
+const (
+	MetricFamilyCpu        MetricFamily = "cpu"
+	MetricFamilyFilesystem              = "filesystem"
+	MetricFamilyMemory                  = "memory"
+	MetricFamilyNetwork                 = "network"
+	MetricFamilyGeneral                 = "general"
+)
+
+var MetricFamilies = map[MetricFamily][]Metric{
+	MetricFamilyCpu:        CpuMetrics,
+	MetricFamilyFilesystem: FilesystemMetrics,
+	MetricFamilyMemory:     MemoryMetrics,
+	MetricFamilyNetwork:    NetworkMetrics,
+}
+
+func MetricFamilyForName(metricName string) MetricFamily {
+	for family, metrics := range MetricFamilies {
+		for _, metric := range metrics {
+			if metricName == metric.Name {
+				return family
+			}
+		}
+	}
+	return MetricFamilyGeneral
 }
 
 var AllMetrics = append(append(append(append(StandardMetrics, AdditionalMetrics...), RateMetrics...), LabeledMetrics...),
@@ -398,6 +468,26 @@ var MetricNodeMemoryCapacity = Metric{
 	MetricDescriptor: MetricDescriptor{
 		Name:        "memory/node_capacity",
 		Description: "Memory capacity of a node",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNodeCpuAllocatable = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "cpu/node_allocatable",
+		Description: "Cpu allocatable of a node",
+		Type:        MetricGauge,
+		ValueType:   ValueFloat,
+		Units:       UnitsCount,
+	},
+}
+
+var MetricNodeMemoryAllocatable = Metric{
+	MetricDescriptor: MetricDescriptor{
+		Name:        "memory/node_allocatable",
+		Description: "Memory allocatable of a node",
 		Type:        MetricGauge,
 		ValueType:   ValueFloat,
 		Units:       UnitsCount,

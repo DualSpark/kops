@@ -12,13 +12,11 @@ It can be extended to support other cluster management solutions easily.
 Heapster collects and interprets various signals like compute resource usage, lifecycle events, etc, and exports cluster metrics via [REST endpoints](docs/model.md).
 **Note: Some of the endpoints are only valid in Kubernetes clusters**
 
-Use [Kubedash](https://github.com/kubernetes/kubedash) to visualize data exported by Heapster.
-
 Heapster supports multiple sources of data.
 More information [here](docs/source-configuration.md).
 
 Heapster supports a pluggable storage backend.
-It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/), [Google Cloud Logging](https://cloud.google.com/logging/), [Hawkular](http://www.hawkular.org), [Riemann](http://riemann.io) and [Kafka](http://kafka.apache.org/).
+It supports [InfluxDB](http://influxdb.com) with [Grafana](http://grafana.org/docs/features/influxdb), [Google Cloud Monitoring](https://cloud.google.com/monitoring/), [ElasticSearch](https://www.elastic.co/products/elasticsearch), [Google Cloud Logging](https://cloud.google.com/logging/), [Hawkular](http://www.hawkular.org), [Riemann](http://riemann.io) and [Kafka](http://kafka.apache.org/).
 We welcome patches that add additional storage backends.
 Documentation on storage sinks [here](docs/sink-configuration.md)
 The current version of Storage Schema is documented [here](docs/storage-schema.md).
@@ -35,6 +33,7 @@ Using Heapster to monitor an OpenShift cluster requires some additional changes 
 
 #### Troubleshooting guide [here](docs/debugging.md)
 
-### Community
 
-Contributions, questions, and comments are all welcomed and encouraged! Heapster and cAdvisor developers hang out in the [#google-containers](http://webchat.freenode.net/?channels=google-containers) room on freenode.net.  You can also reach us on the [google-containers Google Groups mailing list](https://groups.google.com/forum/#!forum/google-containers).
+## Community
+
+Contributions, questions, and comments are all welcomed and encouraged! minkube developers hang out on [Slack](https://kubernetes.slack.com) in the #sig-instrumentation channel (get an invitation [here](http://slack.kubernetes.io/)). We also have the [kubernetes-dev Google Groups mailing list](https://groups.google.com/forum/#!forum/kubernetes-dev). If you are posting to the list please prefix your subject with "heapster: ".

@@ -1,14 +1,8 @@
-#
-# Stock Grafana + a few custom dashboards
-#
+FROM BASEIMAGE
 
-FROM grafana/grafana:2.6.0
-
-RUN apt-get update && \
-    apt-get install -y curl
-
+ADD grafana.tar /
 COPY dashboards /dashboards
-COPY run.sh /run.sh
+COPY run.sh /
+COPY setup_grafana /usr/bin/
 
-EXPOSE 3000
-ENTRYPOINT /run.sh
+ENTRYPOINT ["/run.sh"]

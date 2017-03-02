@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"k8s.io/apiserver/pkg/util/logs"
 	"k8s.io/heapster/common/flags"
 	"k8s.io/heapster/events/manager"
 	"k8s.io/heapster/events/sinks"
@@ -37,16 +38,27 @@ var (
 	argMaxProcs  = flag.Int("max_procs", 0, "max number of CPUs that can be used simultaneously. Less than 1 for default (number of cores)")
 	argSources   flags.Uris
 	argSinks     flags.Uris
+	argVersion   bool
 )
 
 func main() {
 	quitChannel := make(chan struct{}, 0)
 
-	defer glog.Flush()
 	flag.Var(&argSources, "source", "source(s) to read events from")
 	flag.Var(&argSinks, "sink", "external sink(s) that receive events")
+	flag.BoolVar(&argVersion, "version", false, "print version info and exit")
 	flag.Parse()
+
+	if argVersion {
+		fmt.Println(version.VersionInfo())
+		os.Exit(0)
+	}
+
+	logs.InitLogs()
+	defer logs.FlushLogs()
+
 	setMaxProcs()
+
 	glog.Infof(strings.Join(os.Args, " "))
 	glog.Infof("Eventer version %v", version.HeapsterVersion)
 	if err := validateFlags(); err != nil {
@@ -69,6 +81,10 @@ func main() {
 	// sinks
 	sinksFactory := sinks.NewSinkFactory()
 	sinkList := sinksFactory.BuildAll(argSinks)
+	if len([]flags.Uri(argSinks)) != 0 && len(sinkList) == 0 {
+		glog.Fatal("No available sink to use")
+	}
+
 	for _, sink := range sinkList {
 		glog.Infof("Starting with %s sink", sink.Name())
 	}

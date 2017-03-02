@@ -20,16 +20,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/olivere/elastic"
+	"fmt"
+	"gopkg.in/olivere/elastic.v3"
 )
 
-func TestCreateElasticSearchConfig(t *testing.T) {
-	url, err := url.Parse("?nodes=https://foo.com:20468&nodes=https://bar.com:20468&esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&sniff=false&healthCheck=false")
+func TestCreateElasticSearchService(t *testing.T) {
+	clusterName := "sandbox"
+	esURI := fmt.Sprintf("?nodes=https://foo.com:20468&nodes=https://bar.com:20468&"+
+		"esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&"+
+		"sniff=false&healthCheck=false&cluster_name=%s", clusterName)
+
+	url, err := url.Parse(esURI)
 	if err != nil {
 		t.Fatalf("Error when parsing URL: %s", err.Error())
 	}
 
-	config, err := CreateElasticSearchConfig(url)
+	esSvc, err := CreateElasticSearchService(url)
 	if err != nil {
 		t.Fatalf("Error when creating config: %s", err.Error())
 	}
@@ -45,25 +51,48 @@ func TestCreateElasticSearchConfig(t *testing.T) {
 		t.Fatalf("Error when creating client: %s", err.Error())
 	}
 
-	actualClientRefl := reflect.ValueOf(config.EsClient).Elem()
+	actualClientRefl := reflect.ValueOf(esSvc.EsClient).Elem()
 	expectedClientRefl := reflect.ValueOf(expectedClient).Elem()
 
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
-		t.Fatalf("basicAuthUsername is not equal")
+		t.Fatal("basicAuthUsername is not equal")
 	}
 	if actualClientRefl.FieldByName("basicAuthUsername").String() != expectedClientRefl.FieldByName("basicAuthUsername").String() {
-		t.Fatalf("basicAuthUsername is not equal")
+		t.Fatal("basicAuthUsername is not equal")
 	}
 	if actualClientRefl.FieldByName("maxRetries").Int() != expectedClientRefl.FieldByName("maxRetries").Int() {
-		t.Fatalf("maxRetries is not equal")
+		t.Fatal("maxRetries is not equal")
 	}
 	if actualClientRefl.FieldByName("healthcheckTimeoutStartup").Int() != expectedClientRefl.FieldByName("healthcheckTimeoutStartup").Int() {
-		t.Fatalf("healthcheckTimeoutStartup is not equal")
+		t.Fatal("healthcheckTimeoutStartup is not equal")
 	}
 	if actualClientRefl.FieldByName("snifferEnabled").Bool() != expectedClientRefl.FieldByName("snifferEnabled").Bool() {
-		t.Fatalf("snifferEnabled is not equal")
+		t.Fatal("snifferEnabled is not equal")
 	}
 	if actualClientRefl.FieldByName("healthcheckEnabled").Bool() != expectedClientRefl.FieldByName("healthcheckEnabled").Bool() {
-		t.Fatalf("healthcheckEnabled is not equal")
+		t.Fatal("healthcheckEnabled is not equal")
+	}
+	if esSvc.ClusterName != clusterName {
+		t.Fatal("cluster name is not equal")
+	}
+}
+
+func TestCreateElasticSearchServiceForDefaultClusterName(t *testing.T) {
+	esURI := "?nodes=https://foo.com:20468&nodes=https://bar.com:20468&" +
+		"esUserName=test&esUserSecret=password&maxRetries=10&startupHealthcheckTimeout=30&" +
+		"sniff=false&healthCheck=false"
+
+	url, err := url.Parse(esURI)
+	if err != nil {
+		t.Fatalf("Error when parsing URL: %s", err.Error())
+	}
+
+	esSvc, err := CreateElasticSearchService(url)
+	if err != nil {
+		t.Fatalf("Error when creating config: %s", err.Error())
+	}
+
+	if esSvc.ClusterName != ESClusterName {
+		t.Fatalf("cluster name is not equal. Expected: %s, Got: %s", ESClusterName, esSvc.ClusterName)
 	}
 }

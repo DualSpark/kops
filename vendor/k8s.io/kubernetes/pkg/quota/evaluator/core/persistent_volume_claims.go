@@ -20,18 +20,19 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/kubernetes/pkg/admission"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apiserver/pkg/admission"
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/resource"
 	"k8s.io/kubernetes/pkg/api/v1"
 	"k8s.io/kubernetes/pkg/apis/storage/util"
-	clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/pkg/controller/informers"
+	"k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
+	informers "k8s.io/kubernetes/pkg/client/informers/informers_generated/externalversions"
 	"k8s.io/kubernetes/pkg/quota"
 	"k8s.io/kubernetes/pkg/quota/generic"
-	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/runtime/schema"
-	"k8s.io/kubernetes/pkg/util/sets"
 )
 
 // pvcResources are the set of static resources managed by quota associated with pvcs.
@@ -64,7 +65,7 @@ func listPersistentVolumeClaimsByNamespaceFuncUsingClient(kubeClient clientset.I
 	// TODO: ideally, we could pass dynamic client pool down into this code, and have one way of doing this.
 	// unfortunately, dynamic client works with Unstructured objects, and when we calculate Usage, we require
 	// structured objects.
-	return func(namespace string, options v1.ListOptions) ([]runtime.Object, error) {
+	return func(namespace string, options metav1.ListOptions) ([]runtime.Object, error) {
 		itemList, err := kubeClient.Core().PersistentVolumeClaims(namespace).List(options)
 		if err != nil {
 			return nil, err
@@ -82,7 +83,7 @@ func listPersistentVolumeClaimsByNamespaceFuncUsingClient(kubeClient clientset.I
 func NewPersistentVolumeClaimEvaluator(kubeClient clientset.Interface, f informers.SharedInformerFactory) quota.Evaluator {
 	listFuncByNamespace := listPersistentVolumeClaimsByNamespaceFuncUsingClient(kubeClient)
 	if f != nil {
-		listFuncByNamespace = generic.ListResourceUsingInformerFunc(f, schema.GroupResource{Resource: "persistentvolumeclaims"})
+		listFuncByNamespace = generic.ListResourceUsingInformerFunc(f, v1.SchemeGroupVersion.WithResource("persistentvolumeclaims"))
 	}
 	return &pvcEvaluator{
 		listFuncByNamespace: listFuncByNamespace,
@@ -138,7 +139,7 @@ func (p *pvcEvaluator) GroupKind() schema.GroupKind {
 	return api.Kind("PersistentVolumeClaim")
 }
 
-// Handles returns true if the evalutor should handle the specified operation.
+// Handles returns true if the evaluator should handle the specified operation.
 func (p *pvcEvaluator) Handles(operation admission.Operation) bool {
 	return admission.Create == operation
 }

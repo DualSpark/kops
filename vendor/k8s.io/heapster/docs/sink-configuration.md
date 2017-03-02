@@ -31,7 +31,9 @@ The following options are available:
 * `user` - InfluxDB username (default: `root`)
 * `pw` - InfluxDB password (default: `root`)
 * `db` - InfluxDB Database name (default: `k8s`)
+* `retention` - Duration of the default InfluxDB retention policy, e.g. `4h` or `7d` (default: `0` meaning infinite)
 * `secure` - Connect securely to InfluxDB (default: `false`)
+* `insecuressl` - Ignore SSL certificate validity (default: `false`)
 * `withfields` - Use [InfluxDB fields](storage-schema.md#using-fields) (default: `false`)
 
 ### Google Cloud Monitoring
@@ -87,6 +89,21 @@ The following options are available:
 
 A combination of `insecure` / `caCert` / `auth` is not supported, only a single of these parameters is allowed at once. Also, combination of `useServiceAccount` and `user` + `pass` is not supported. To increase the performance of Hawkular sink in case of multiple instances of Hawkular-Metrics (such as scaled scenario in OpenShift) modify the parameters of batchSize and concurrencyLimit to balance the load on Hawkular-Metrics instances.
 
+
+### Wavefront
+The Wavefront sink supports monitoring metrics only.
+To use the Wavefront sink add the following flag:
+
+    --sink=wavefront:<WAVEFRONT_PROXY_URL:PORT>[?<OPTIONS>]
+
+The following options are available:
+
+* `clusterName` - The name of the Kubernetes cluster being monitored. This will be added as a tag called `cluster` to metrics in Wavefront (default: `k8s-cluster`)
+* `prefix` - The prefix to be added to all metrics that Heapster collects (default: `heapster.`)
+* `includeLabels` - If set to true, any K8s labels will be applied to metrics as tags (default: `false`)
+* `includeContainers` - If set to true, all container metrics will be sent to Wavefront. When set to false, container level metrics are skipped (pod level and above are still sent to Wavefront) (default: `true`)
+
+
 ### OpenTSDB
 This sink supports monitoring metrics and events.
 To use the opentsdb sink add the following flag:
@@ -97,29 +114,6 @@ Currently, accessing opentsdb via its rest apis doesn't need any authentication,
 can enable opentsdb sink like this:
 
     --sink=opentsdb:http://192.168.1.8:4242
-
-### Monasca
-This sink supports monitoring metrics only.
-To use the Monasca sink add the following flag:
-
-	--sink=monasca:[?<OPTIONS>]
-
-The available options are listed below, and some of them are mandatory. You need to provide access to the Identity service of OpenStack (keystone).
-Currently, only authorization through `username` / `userID` + `password` / `APIKey` is supported.
-
-The Monasca sink is then created with either the provided Monasca API Server URL, or the URL is discovered automatically if none is provided by the user.
-
-The following options are available:
-
-* `user-id` - ID of the OpenStack user
-* `username` - Name of the OpenStack user
-* `tenant-id` - ID of the OpenStack tenant (project)
-* `keystone-url` - URL to the Keystone identity service (*mandatory*). Must be a v3 server (required by Monasca)
-* `password` - Password of the OpenStack user
-* `api-key` - API-Key for the OpenStack user
-* `domain-id` - ID of the OpenStack user's domain
-* `domain-name` - Name of the OpenStack user's domain
-* `monasca-url` - URL of the Monasca API server (*optional*: the sink will attempt to discover the service if not provided)
 
 ### Kafka
 This sink supports monitoring metrics only.
@@ -155,19 +149,24 @@ The following options are available:
 ### Elasticsearch
 This sink supports monitoring metrics and events. To use the ElasticSearch
 sink add the following flag:
-
+```
     --sink=elasticsearch:<ES_SERVER_URL>[?<OPTIONS>]
-
+```
 Normally an ElasticSearch cluster has multiple nodes or a proxy, so these need
 to be configured for the ElasticSearch sink. To do this, you can set
 `ES_SERVER_URL` to a dummy value, and use the `?nodes=` query value for each
 additional node in the cluster. For example:
+```
+  --sink=elasticsearch:?nodes=http://foo.com:9200&nodes=http://bar.com:9200
+```
+(*) Notice that using the `?nodes` notation will override the `ES_SERVER_URL`
 
-  --sink=elasticsearch:?nodes=foo.com:9200&nodes=bar.com:9200
 
 Besides this, the following options can be set in query string:
 
-* `Index` - the index for metrics and events. The default is `heapster`
+(*) Note that the keys are case sensitive
+
+* `index` - the index for metrics and events. The default is `heapster`
 * `esUserName` - the username if authentication is enabled
 * `esUserSecret` - the password if authentication is enabled
 * `maxRetries` - the number of retries that the Elastic client will perform
@@ -180,14 +179,73 @@ Besides this, the following options can be set in query string:
 * `startupHealthcheckTimeout` - the time in seconds the healthcheck waits for
   a response from Elasticsearch on startup, i.e. when creating a client. The
   default value is `1`.
+* `bulkWorkers` - number of workers for bulk processing. Default value is `5`.
+* `cluster_name` - cluster name for different Kubernetes clusters. Default value is `default`.
+
 
 Like this:
 
-    --sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testMetric"
+    --sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testMetric"
 
 	or
 
-	--sink="elasticsearch:?nodes=0.0.0.0:9200&Index=testEvent"
+	--sink="elasticsearch:?nodes=http://127.0.0.1:9200&index=testEvent"
+
+#### AWS Integration
+In order to use AWS Managed Elastic we need to use one of the following methods:
+
+1. Making sure the public IPs of the Heapster are allowed on the ElasticSearch's Access Policy
+
+-OR-
+
+2. Configuring an Access Policy with IAM
+	1. Configure the ElasticSearch cluster policy with IAM User
+	2. Create a secret that stores the IAM credentials
+	3. Expose the credentials to the environment variables: `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+
+	```
+	env:
+      - name: AWS_ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: aws-heapster
+            key: aws.id
+      - name: AWS_SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: aws-heapster
+            key: aws.secret
+	```
+
+### Graphite/Carbon
+This sink supports monitoring metrics only.
+To use the graphite sink add the following flag:
+
+    --sink="graphite:<PROTOCOL>://<HOST>[:<PORT>][<?<OPTIONS>>]"
+
+PROTOCOL must be `tcp` or `udp`, PORT is 2003 by default.
+
+These options are available:
+* `prefix` - Adds specified prefix to all metric paths
+
+For example,
+
+    --sink="graphite:tcp://metrics.example.com:2003?prefix=kubernetes.example"
+
+Metrics are sent to Graphite with this hierarchy:
+* `PREFIX`
+  * `cluster`
+  * `namespaces` 
+    * `NAMESPACE`
+  * `nodes`
+    * `NODE`
+      * `pods`
+        * `NAMESPACE`
+           * `POD`
+             * `containers`
+               * `CONTAINER`
+      * `sys-containers`
+        * `SYS-CONTAINER`
 
 ## Using multiple sinks
 

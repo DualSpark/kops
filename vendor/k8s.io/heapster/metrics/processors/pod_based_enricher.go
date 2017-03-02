@@ -21,13 +21,13 @@ import (
 
 	"k8s.io/heapster/metrics/util"
 
+	v1listers "k8s.io/client-go/listers/core/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 	"k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/client/cache"
 )
 
 type PodBasedEnricher struct {
-	podLister *cache.StoreToPodLister
+	podLister v1listers.PodLister
 }
 
 func (this *PodBasedEnricher) Name() string {
@@ -65,23 +65,12 @@ func (this *PodBasedEnricher) Process(batch *core.DataBatch) (*core.DataBatch, e
 }
 
 func (this *PodBasedEnricher) getPod(namespace, name string) (*kube_api.Pod, error) {
-	o, exists, err := this.podLister.Get(
-		&kube_api.Pod{
-			ObjectMeta: kube_api.ObjectMeta{
-				Namespace: namespace,
-				Name:      name,
-			},
-		},
-	)
+	pod, err := this.podLister.Pods(namespace).Get(name)
 	if err != nil {
 		return nil, err
 	}
-	if !exists || o == nil {
+	if pod == nil {
 		return nil, fmt.Errorf("cannot find pod definition")
-	}
-	pod, ok := o.(*kube_api.Pod)
-	if !ok {
-		return nil, fmt.Errorf("cache contains wrong type")
 	}
 	return pod, nil
 }
@@ -98,7 +87,7 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 	}
 
 	containerMs.Labels[core.LabelPodId.Key] = string(pod.UID)
-	containerMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels, ",")
+	containerMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels)
 
 	namespace := containerMs.Labels[core.LabelNamespaceName.Key]
 	podName := containerMs.Labels[core.LabelPodName.Key]
@@ -106,7 +95,7 @@ func addContainerInfo(key string, containerMs *core.MetricSet, pod *kube_api.Pod
 	podKey := core.PodKey(namespace, podName)
 	_, oldfound := batch.MetricSets[podKey]
 	if !oldfound {
-		_, newfound := batch.MetricSets[podKey]
+		_, newfound := newMs[podKey]
 		if !newfound {
 			glog.V(2).Infof("Pod %s not found, creating a stub", podKey)
 			podMs := &core.MetricSet{
@@ -131,7 +120,7 @@ func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *cor
 
 	// Add UID to pod
 	podMs.Labels[core.LabelPodId.Key] = string(pod.UID)
-	podMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels, ",")
+	podMs.Labels[core.LabelLabels.Key] = util.LabelsToString(pod.Labels)
 
 	// Add cpu/mem requests and limits to containers
 	for _, container := range pod.Spec.Containers {
@@ -149,7 +138,7 @@ func addPodInfo(key string, podMs *core.MetricSet, pod *kube_api.Pod, batch *cor
 						core.LabelContainerName.Key:      container.Name,
 						core.LabelContainerBaseImage.Key: container.Image,
 						core.LabelPodId.Key:              string(pod.UID),
-						core.LabelLabels.Key:             util.LabelsToString(pod.Labels, ","),
+						core.LabelLabels.Key:             util.LabelsToString(pod.Labels),
 						core.LabelNodename.Key:           podMs.Labels[core.LabelNodename.Key],
 						core.LabelHostname.Key:           podMs.Labels[core.LabelHostname.Key],
 						core.LabelHostID.Key:             podMs.Labels[core.LabelHostID.Key],
@@ -196,7 +185,7 @@ func intValue(value int64) core.MetricValue {
 	}
 }
 
-func NewPodBasedEnricher(podLister *cache.StoreToPodLister) (*PodBasedEnricher, error) {
+func NewPodBasedEnricher(podLister v1listers.PodLister) (*PodBasedEnricher, error) {
 	return &PodBasedEnricher{
 		podLister: podLister,
 	}, nil

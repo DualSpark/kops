@@ -8,3 +8,5 @@ eventer
 *.un~
 Session.vim
 .netrwhist
+.idea
+*manifest-tool

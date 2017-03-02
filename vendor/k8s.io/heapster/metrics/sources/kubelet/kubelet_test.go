@@ -24,9 +24,10 @@ import (
 	cadvisor_api "github.com/google/cadvisor/info/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kube_api "k8s.io/client-go/pkg/api/v1"
+	util "k8s.io/client-go/util/testing"
 	"k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
-	util "k8s.io/kubernetes/pkg/util/testing"
 )
 
 func TestDecodeMetrics1(t *testing.T) {
@@ -255,7 +256,7 @@ func TestDecodeMetrics6(t *testing.T) {
 					LoadAverage: 20,
 				},
 				CustomMetrics: map[string][]cadvisor_api.MetricVal{
-					"test1": []cadvisor_api.MetricVal{
+					"test1": {
 						{
 							Label:      "test1",
 							Timestamp:  time.Now(),
@@ -263,7 +264,7 @@ func TestDecodeMetrics6(t *testing.T) {
 							FloatValue: 1.0,
 						},
 					},
-					"test2": []cadvisor_api.MetricVal{
+					"test2": {
 						{
 							Label:      "test2",
 							Timestamp:  time.Now(),
@@ -271,7 +272,7 @@ func TestDecodeMetrics6(t *testing.T) {
 							FloatValue: 1.0,
 						},
 					},
-					"test3": []cadvisor_api.MetricVal{
+					"test3": {
 						{
 							Label:      "test3",
 							Timestamp:  time.Now(),
@@ -279,7 +280,7 @@ func TestDecodeMetrics6(t *testing.T) {
 							FloatValue: 1.0,
 						},
 					},
-					"test4": []cadvisor_api.MetricVal{
+					"test4": {
 						{
 							Label:      "test4",
 							Timestamp:  time.Now(),
@@ -297,8 +298,8 @@ func TestDecodeMetrics6(t *testing.T) {
 }
 
 var nodes = []kube_api.Node{
-	kube_api.Node{
-		ObjectMeta: kube_api.ObjectMeta{
+	{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{
@@ -320,8 +321,8 @@ var nodes = []kube_api.Node{
 			},
 		},
 	},
-	kube_api.Node{
-		ObjectMeta: kube_api.ObjectMeta{
+	{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{
@@ -343,8 +344,8 @@ var nodes = []kube_api.Node{
 			},
 		},
 	},
-	kube_api.Node{
-		ObjectMeta: kube_api.ObjectMeta{
+	{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "testNode",
 		},
 		Status: kube_api.NodeStatus{
@@ -362,6 +363,10 @@ var nodes = []kube_api.Node{
 				{
 					Type:    kube_api.NodeLegacyHostIP,
 					Address: "127.0.0.2",
+				},
+				{
+					Type:    kube_api.NodeInternalIP,
+					Address: "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
 				},
 				{
 					Type:    kube_api.NodeInternalIP,

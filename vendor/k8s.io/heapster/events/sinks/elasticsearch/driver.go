@@ -19,55 +19,54 @@ import (
 	"sync"
 	"time"
 
-	"encoding/json"
-
 	"github.com/golang/glog"
-	"github.com/olivere/elastic"
+	kube_api "k8s.io/client-go/pkg/api/v1"
 	esCommon "k8s.io/heapster/common/elasticsearch"
 	event_core "k8s.io/heapster/events/core"
 	"k8s.io/heapster/metrics/core"
-	kube_api "k8s.io/kubernetes/pkg/api"
 )
 
 const (
 	typeName = "events"
 )
 
-// LimitFunc is a pluggable function to enforce limits on the object
-type SaveDataFunc func(esClient *elastic.Client, indexName string, typeName string, sinkData interface{}) error
+// SaveDataFunc is a pluggable function to enforce limits on the object
+type SaveDataFunc func(date time.Time, sinkData []interface{}) error
 
 type elasticSearchSink struct {
-	saveDataFunc SaveDataFunc
-	esConfig     esCommon.ElasticSearchConfig
+	esSvc     esCommon.ElasticSearchService
+	saveData  SaveDataFunc
+	flushData func() error
 	sync.RWMutex
 }
 
 type EsSinkPoint struct {
-	EventValue     interface{}
-	EventTimestamp time.Time
-	EventTags      map[string]string
+	Count                    interface{}
+	Metadata                 interface{}
+	InvolvedObject           interface{}
+	Source                   interface{}
+	FirstOccurrenceTimestamp time.Time
+	LastOccurrenceTimestamp  time.Time
+	Message                  string
+	Reason                   string
+	Type                     string
+	EventTags                map[string]string
 }
 
-// Generate point value for event
-func getEventValue(event *kube_api.Event) (string, error) {
-	// TODO: check whether indenting is required.
-	bytes, err := json.MarshalIndent(event, "", " ")
-	if err != nil {
-		return "", err
-	}
-	return string(bytes), nil
-}
-
-func eventToPoint(event *kube_api.Event) (*EsSinkPoint, error) {
-	value, err := getEventValue(event)
-	if err != nil {
-		return nil, err
-	}
+func eventToPoint(event *kube_api.Event, clusterName string) (*EsSinkPoint, error) {
 	point := EsSinkPoint{
-		EventTimestamp: event.LastTimestamp.Time.UTC(),
-		EventValue:     value,
+		FirstOccurrenceTimestamp: event.FirstTimestamp.Time.UTC(),
+		LastOccurrenceTimestamp:  event.LastTimestamp.Time.UTC(),
+		Message:                  event.Message,
+		Reason:                   event.Reason,
+		Type:                     event.Type,
+		Count:                    event.Count,
+		Metadata:                 event.ObjectMeta,
+		InvolvedObject:           event.InvolvedObject,
+		Source:                   event.Source,
 		EventTags: map[string]string{
-			"eventID": string(event.UID),
+			"eventID":      string(event.UID),
+			"cluster_name": clusterName,
 		},
 	}
 	if event.InvolvedObject.Kind == "Pod" {
@@ -82,11 +81,18 @@ func (sink *elasticSearchSink) ExportEvents(eventBatch *event_core.EventBatch) {
 	sink.Lock()
 	defer sink.Unlock()
 	for _, event := range eventBatch.Events {
-		point, err := eventToPoint(event)
+		point, err := eventToPoint(event, sink.esSvc.ClusterName)
 		if err != nil {
 			glog.Warningf("Failed to convert event to point: %v", err)
 		}
-		sink.saveDataFunc(sink.esConfig.EsClient, sink.esConfig.Index, typeName, point)
+		err = sink.saveData(point.LastOccurrenceTimestamp, []interface{}{*point})
+		if err != nil {
+			glog.Warningf("Failed to export data to ElasticSearch sink: %v", err)
+		}
+	}
+	err := sink.flushData()
+	if err != nil {
+		glog.Warningf("Failed to flushing data to ElasticSearch sink: %v", err)
 	}
 }
 
@@ -100,14 +106,20 @@ func (sink *elasticSearchSink) Stop() {
 
 func NewElasticSearchSink(uri *url.URL) (event_core.EventSink, error) {
 	var esSink elasticSearchSink
-	elasticsearchConfig, err := esCommon.CreateElasticSearchConfig(uri)
+	esSvc, err := esCommon.CreateElasticSearchService(uri)
 	if err != nil {
-		glog.V(2).Infof("failed to config elasticsearch")
+		glog.Warning("Failed to config ElasticSearch")
 		return nil, err
 	}
 
-	esSink.esConfig = *elasticsearchConfig
-	esSink.saveDataFunc = esCommon.SaveDataIntoES
-	glog.V(2).Infof("elasticsearch sink setup successfully")
+	esSink.esSvc = *esSvc
+	esSink.saveData = func(date time.Time, sinkData []interface{}) error {
+		return esSvc.SaveData(date, typeName, sinkData)
+	}
+	esSink.flushData = func() error {
+		return esSvc.FlushData()
+	}
+
+	glog.V(2).Info("ElasticSearch sink setup successfully")
 	return &esSink, nil
 }
