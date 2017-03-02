@@ -30,9 +30,11 @@ import (
 	"k8s.io/kops/upup/pkg/kutil"
 	"k8s.io/kops/util/pkg/tables"
 	k8sapi "k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/v1"
-	k8s_clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
+
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 type RollingUpdateOptions struct {
@@ -129,15 +131,16 @@ func RunRollingUpdateCluster(f *util.Factory, out io.Writer, options *RollingUpd
 		return fmt.Errorf("cannot load kubecfg settings for %q: %v", contextName, err)
 	}
 
+
 	var nodes []v1.Node
-	var k8sClient *k8s_clientset.Clientset
 	if !options.CloudOnly {
-		k8sClient, err = k8s_clientset.NewForConfig(config)
+		k8sClient, err := kubernetes.NewForConfig(config)
 		if err != nil {
 			return fmt.Errorf("cannot build kube client for %q: %v", contextName, err)
 		}
 
-		nodeList, err := k8sClient.Core().Nodes().List(v1.ListOptions{})
+
+		nodeList, err := k8sClient.Nodes().List(meta_v1.ListOptions{})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to reach the kubernetes API.\n")
 			fmt.Fprintf(os.Stderr, "Use --cloudonly to do a rolling-update without confirming progress with the k8s API\n\n")

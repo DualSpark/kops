@@ -17,8 +17,8 @@ limitations under the License.
 package kops
 
 import (
-	"k8s.io/kubernetes/pkg/runtime"
-	"k8s.io/kubernetes/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 var (
@@ -30,6 +30,7 @@ var (
 const GroupName = "kops"
 
 // SchemeGroupVersion is group version used to register these objects
+
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: runtime.APIVersionInternal}
 
 // Kind takes an unqualified kind and returns a Group qualified GroupKind

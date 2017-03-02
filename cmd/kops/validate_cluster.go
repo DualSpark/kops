@@ -30,8 +30,8 @@ import (
 	"k8s.io/kops/util/pkg/tables"
 	k8sapi "k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/api/v1"
+	"k8s.io/client-go/tools/clientcmd"
 	k8s_clientset "k8s.io/kubernetes/pkg/client/clientset_generated/clientset"
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
 )
 
 type ValidateClusterOptions struct {

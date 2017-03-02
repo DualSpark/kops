@@ -20,9 +20,8 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"k8s.io/kubernetes/pkg/client/restclient"
-	"k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
+	"k8s.io/client-go/tools/clientcmd"
+	k8sapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
 // KubeconfigBuilder builds a kubecfg file
@@ -57,7 +56,7 @@ func (b *KubeconfigBuilder) DeleteKubeConfig() error {
 		return fmt.Errorf("error loading kubeconfig: %v", err)
 	}
 
-	if config == nil || clientcmdapi.IsConfigEmpty(config) {
+	if config == nil || k8sapi.IsConfigEmpty(config) {
 		glog.V(2).Infof("kubeconfig is empty")
 		return nil
 	}
@@ -107,13 +106,13 @@ func (b *KubeconfigBuilder) WriteKubecfg() error {
 	}
 
 	if config == nil {
-		config = &clientcmdapi.Config{}
+		config = &k8sapi.Config{}
 	}
 
 	{
 		cluster := config.Clusters[b.Context]
 		if cluster == nil {
-			cluster = clientcmdapi.NewCluster()
+			cluster = k8sapi.NewCluster()
 		}
 		cluster.Server = "https://" + b.KubeMasterIP
 
@@ -128,7 +127,7 @@ func (b *KubeconfigBuilder) WriteKubecfg() error {
 		}
 
 		if config.Clusters == nil {
-			config.Clusters = make(map[string]*clientcmdapi.Cluster)
+			config.Clusters = make(map[string]*k8sapi.Cluster)
 		}
 		config.Clusters[b.Context] = cluster
 	}
@@ -136,7 +135,7 @@ func (b *KubeconfigBuilder) WriteKubecfg() error {
 	{
 		authInfo := config.AuthInfos[b.Context]
 		if authInfo == nil {
-			authInfo = clientcmdapi.NewAuthInfo()
+			authInfo = k8sapi.NewAuthInfo()
 		}
 
 		if b.KubeBearerToken != "" {
@@ -154,7 +153,7 @@ func (b *KubeconfigBuilder) WriteKubecfg() error {
 		}
 
 		if config.AuthInfos == nil {
-			config.AuthInfos = make(map[string]*clientcmdapi.AuthInfo)
+			config.AuthInfos = make(map[string]*k8sapi.AuthInfo)
 		}
 		config.AuthInfos[b.Context] = authInfo
 	}
@@ -166,14 +165,14 @@ func (b *KubeconfigBuilder) WriteKubecfg() error {
 		name := b.Context + "-basic-auth"
 		authInfo := config.AuthInfos[name]
 		if authInfo == nil {
-			authInfo = clientcmdapi.NewAuthInfo()
+			authInfo = k8sapi.NewAuthInfo()
 		}
 
 		authInfo.Username = b.KubeUser
 		authInfo.Password = b.KubePassword
 
 		if config.AuthInfos == nil {
-			config.AuthInfos = make(map[string]*clientcmdapi.AuthInfo)
+			config.AuthInfos = make(map[string]*k8sapi.AuthInfo)
 		}
 		config.AuthInfos[name] = authInfo
 	}
@@ -181,7 +180,7 @@ func (b *KubeconfigBuilder) WriteKubecfg() error {
 	{
 		context := config.Contexts[b.Context]
 		if context == nil {
-			context = clientcmdapi.NewContext()
+			context = k8sapi.NewContext()
 		}
 
 		context.Cluster = b.Context
@@ -192,7 +191,7 @@ func (b *KubeconfigBuilder) WriteKubecfg() error {
 		}
 
 		if config.Contexts == nil {
-			config.Contexts = make(map[string]*clientcmdapi.Context)
+			config.Contexts = make(map[string]*k8sapi.Context)
 		}
 		config.Contexts[b.Context] = context
 	}

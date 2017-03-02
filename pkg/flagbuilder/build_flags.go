@@ -24,7 +24,7 @@ import (
 
 	"github.com/golang/glog"
 	"k8s.io/kops/upup/pkg/fi/utils"
-	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // BuildFlags builds flag arguments based on "flag" tags on the structure
@@ -112,7 +112,7 @@ func BuildFlags(options interface{}) (string, error) {
 				flag = fmt.Sprintf("--%s=%s", flagName, vString)
 			}
 
-		case metav1.Duration:
+		case v1.Duration:
 			vString := v.Duration.String()
 
 			// See https://github.com/kubernetes/kubernetes/issues/40783
