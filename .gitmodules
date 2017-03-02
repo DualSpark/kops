@@ -250,9 +250,6 @@
 [submodule "_vendor/github.com/chai2010/gettext-go"]
 	path = _vendor/github.com/chai2010/gettext-go
 	url = https://github.com/chai2010/gettext-go
-[submodule "_vendor/k8s.io/apimachinery"]
-	path = _vendor/k8s.io/apimachinery
-	url = https://github.com/kubernetes/apimachinery
 [submodule "_vendor/github.com/Azure/go-autorest"]
 	path = _vendor/github.com/Azure/go-autorest
 	url = https://github.com/Azure/go-autorest
