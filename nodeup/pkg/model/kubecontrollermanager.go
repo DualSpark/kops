@@ -22,8 +22,7 @@ import (
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/nodeup/nodetasks"
 	"k8s.io/kubernetes/pkg/api/resource"
-	"k8s.io/kubernetes/pkg/api/v1"
-	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubernetes/pkg/util/intstr"
 	"strings"
 )
@@ -78,7 +77,7 @@ func (b *KubeControllerManagerBuilder) buildPod() (*v1.Pod, error) {
 	}
 
 	pod := &v1.Pod{
-		TypeMeta: metav1.TypeMeta{
+		TypeMeta: v1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Pod",
 		},

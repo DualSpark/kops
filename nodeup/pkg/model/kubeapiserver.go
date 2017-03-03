@@ -23,10 +23,11 @@ import (
 	"k8s.io/kops/pkg/flagbuilder"
 	"k8s.io/kops/upup/pkg/fi"
 	"k8s.io/kops/upup/pkg/fi/nodeup/nodetasks"
-	"k8s.io/kubernetes/pkg/api/resource"
-	"k8s.io/kubernetes/pkg/api/v1"
-	metav1 "k8s.io/kubernetes/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/api/resource"
+	//k8sv1 "k8s.io/kubernetes/pkg/api/v1"
+	k8sv1 "k8s.io/kubernetes/pkg/api/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // KubeAPIServerBuilder install kube-apiserver (just the manifest at the moment)
@@ -63,7 +64,7 @@ func (b *KubeAPIServerBuilder) Build(c *fi.ModelBuilderContext) error {
 	return nil
 }
 
-func (b *KubeAPIServerBuilder) buildPod() (*v1.Pod, error) {
+func (b *KubeAPIServerBuilder) buildPod() (*k8sv1.Pod, error) {
 	flags, err := flagbuilder.BuildFlags(b.Cluster.Spec.KubeAPIServer)
 	if err != nil {
 		return nil, fmt.Errorf("error building kube-apiserver flags: %v", err)
@@ -78,12 +79,12 @@ func (b *KubeAPIServerBuilder) buildPod() (*v1.Pod, error) {
 		"/bin/sh", "-c", "/usr/local/bin/kube-apiserver " + flags + " 1>>/var/log/kube-apiserver.log 2>&1",
 	}
 
-	pod := &v1.Pod{
+	pod := &k8sv1.Pod{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",
 			Kind:       "Pod",
 		},
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        "kube-apiserver",
 			Namespace:   "kube-system",
 			Annotations: b.buildAnnotations(),
@@ -91,23 +92,23 @@ func (b *KubeAPIServerBuilder) buildPod() (*v1.Pod, error) {
 				"k8s-app": "kube-apiserver",
 			},
 		},
-		Spec: v1.PodSpec{
+		Spec: k8sv1.PodSpec{
 			HostNetwork: true,
 		},
 	}
 
-	container := &v1.Container{
+	container := &k8sv1.Container{
 		Name:  "kube-apiserver",
 		Image: b.Cluster.Spec.KubeAPIServer.Image,
-		Resources: v1.ResourceRequirements{
-			Requests: v1.ResourceList{
-				v1.ResourceCPU: resource.MustParse("150m"),
+		Resources: k8sv1.ResourceRequirements{
+			Requests: k8sv1.ResourceList{
+				k8sv1.ResourceCPU: resource.MustParse("150m"),
 			},
 		},
 		Command: redirectCommand,
-		LivenessProbe: &v1.Probe{
-			Handler: v1.Handler{
-				HTTPGet: &v1.HTTPGetAction{
+		LivenessProbe: &k8sv1.Probe{
+			Handler: k8sv1.Handler{
+				HTTPGet: &k8sv1.HTTPGetAction{
 					Host: "127.0.0.1",
 					Path: "/healthz",
 					Port: intstr.FromInt(8080),
@@ -116,7 +117,7 @@ func (b *KubeAPIServerBuilder) buildPod() (*v1.Pod, error) {
 			InitialDelaySeconds: 15,
 			TimeoutSeconds:      15,
 		},
-		Ports: []v1.ContainerPort{
+		Ports: []k8sv1.ContainerPort{
 			{
 				Name:          "https",
 				ContainerPort: b.Cluster.Spec.KubeAPIServer.SecurePort,
@@ -156,17 +157,17 @@ func (b *KubeAPIServerBuilder) buildPod() (*v1.Pod, error) {
 	return pod, nil
 }
 
-func addHostPathMapping(pod *v1.Pod, container *v1.Container, name string, path string, readOnly bool) {
-	pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
+func addHostPathMapping(pod *k8sv1.Pod, container *k8sv1.Container, name string, path string, readOnly bool) {
+	pod.Spec.Volumes = append(pod.Spec.Volumes, k8sv1.Volume{
 		Name: name,
-		VolumeSource: v1.VolumeSource{
-			HostPath: &v1.HostPathVolumeSource{
+		VolumeSource: k8sv1.VolumeSource{
+			HostPath: &k8sv1.HostPathVolumeSource{
 				Path: path,
 			},
 		},
 	})
 
-	container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+	container.VolumeMounts = append(container.VolumeMounts, k8sv1.VolumeMount{
 		Name:      name,
 		MountPath: path,
 		ReadOnly:  readOnly,

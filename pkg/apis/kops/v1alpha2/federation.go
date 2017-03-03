@@ -18,7 +18,7 @@ package v1alpha2
 
 import (
 	"k8s.io/kubernetes/pkg/api/v1"
-	meta_v1 "k8s.io/kubernetes/pkg/apis/meta/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Federation represents a federated set of kubernetes clusters

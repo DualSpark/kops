@@ -30,7 +30,7 @@ import (
 	"k8s.io/kops/pkg/client/simple"
 	"k8s.io/kops/upup/pkg/kutil"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubernetes/pkg/util/validation/field"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	// Register our APIs
 	_ "k8s.io/kops/pkg/apis/kops/install"
